@@ -1,0 +1,2 @@
+# Ignore .out files used to test server.
+*.out
