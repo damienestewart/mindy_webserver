@@ -1,0 +1,24 @@
+Server started @ IP-Address: 127.0.0.1 on port 3000. : Sun Mar 20 14:50:33 2016
+Client connection from: 127.0.0.1 : Sun Mar 20 14:50:36 2016
+Client (127.0.0.1) Request:
+	Method: GET
+	URI: /
+	Http Version: HTTP/1.1 : Sun Mar 20 14:50:36 2016
+Client connection from: 10.16.31.28 : Sun Mar 20 14:51:14 2016
+Client (10.16.31.28) Request:
+	Method: GET
+	URI: /
+	Http Version: HTTP/1.1 : Sun Mar 20 14:51:14 2016
+Client connection from: 10.16.31.28 : Sun Mar 20 14:51:15 2016
+Client (10.16.31.28) Request:
+	Method: GET
+	URI: /favicon.ico
+	Http Version: HTTP/1.1 : Sun Mar 20 14:51:15 2016
+Client connection from: 10.16.31.28 : Sun Mar 20 14:51:21 2016
+Client connection from: 10.16.31.28 : Sun Mar 20 14:51:21 2016
+Client connection from: 10.16.31.28 : Sun Mar 20 14:51:21 2016
+Client (10.16.31.28) Request:
+	Method: GET
+	URI: /
+	Http Version: HTTP/1.1 : Sun Mar 20 14:51:21 2016
+Server started @ IP-Address: 127.0.0.1 on port 3000. : Sun Mar 20 15:03:06 2016
