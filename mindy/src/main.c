@@ -15,8 +15,9 @@
 #include <strings.h>
 #include <pthread.h>
 #include <arpa/inet.h>
+#include <time.h>
 
-#define MAX_BUFF_SIZE 20*1024*1024
+#define MAX_BUFF_SIZE 20*1024
 
 /*
  * Struct to hold server configuration information.
@@ -27,6 +28,7 @@ struct config_t {
   char *ip_address;
   int port;
   char *logfile;
+  int debug;
 } configuration;
 
 /*
@@ -35,7 +37,7 @@ struct config_t {
 struct request_t {
   char *URI;
   char *METHOD;
-  char *VERSION;
+  char *HTTP_VERSION;
   char *HOST;
   char *ACCEPT;
   char *ACCEPT_LANGUAGE;
@@ -45,6 +47,7 @@ struct request_t {
   int CONTENT_LENGTH;
   char *CONTENT_TYPE;
   char *BODY;
+  char *REMOTE_ADDRESS;
 };
 
 /*
@@ -70,6 +73,16 @@ void get_request_information(struct request_t *, char *);
 void error(const char *);
 
 /*
+ * Write message to log file.
+ */
+void write_log(const char *);
+
+/*
+ * Declare logfile.
+ */
+ FILE *logfile = NULL;
+
+/*
  * Driver code.
  */
 int main(int argc, char *argv[]) {
@@ -79,6 +92,11 @@ int main(int argc, char *argv[]) {
 
   // Read configuration file for configuration information;
   read_server_configuration(&configuration);
+
+  // Open log file.
+  if (!(logfile = fopen(configuration.logfile, "a"))) {
+    error("Failed to open log file.");
+  }
 
   // Create server socket.
   ssocket_fd = socket(AF_INET, SOCK_STREAM, 0);
@@ -103,16 +121,15 @@ int main(int argc, char *argv[]) {
   }
 
   // DEBUG
-  printf("IP address: %s.\n", configuration.ip_address);
-  printf("Port: %d.\n", configuration.port);
-  printf("Default html document: %s.\n", configuration.default_html);
-  printf("Root directory: %s.\n", configuration.root_dir);
+  char info[256];
+  sprintf(info, "Server started @ IP-Address: %s on port %d.", configuration.ip_address,
+  configuration.port);
+  write_log(info);
 
   // Accept connections, implement threading.
   socklen_t c = sizeof(struct sockaddr_in);
   pthread_t thread_id;
   while((csocket_fd = accept(ssocket_fd, (struct sockaddr *)&client, (socklen_t*)&c))) {
-
     int *lcsocket_fd = malloc(sizeof(int));
     *lcsocket_fd = csocket_fd;
     if (pthread_create(&thread_id, NULL, handle_connection, lcsocket_fd)) {
@@ -125,6 +142,8 @@ int main(int argc, char *argv[]) {
     error("Accept failed.");
   }
 
+  fclose(logfile);
+  logfile = NULL;
   return 0;
 }
 
@@ -135,12 +154,15 @@ int main(int argc, char *argv[]) {
  */
 void read_server_configuration(struct config_t *configuration) {
   // Open the configuration file.
-  FILE *config_file = fopen("../configuration/config.conf", "r");
+  FILE *config_file = fopen("../config/mindy.conf", "r");
 
   // Is the configuration file present?
   if (!config_file) {
     error("Configuration file not present.");
   }
+
+  // DEFAULT VALUE FOR DEBUG;
+  configuration->debug = 0;
 
   // Get the lines from the server configuration file.
   ssize_t read;
@@ -169,6 +191,10 @@ void read_server_configuration(struct config_t *configuration) {
       configuration->ip_address = value;
     } else if (strcmp(key, "port") == 0) {
       configuration->port = atoi(value);
+    } else if (strcmp(key, "logfile") == 0) {
+      configuration->logfile = value;
+    } else if (strcmp(key, "debug") == 0) {
+      configuration->debug = atoi(value);
     }
   }
 
@@ -182,6 +208,19 @@ void read_server_configuration(struct config_t *configuration) {
 void *handle_connection(void *csocket_fd) {
   int socket = *((int *)csocket_fd);
   char request[MAX_BUFF_SIZE];
+  struct request_t *request_data = calloc(1, sizeof(struct request_t));
+  char con[256];
+
+  // Get the ip address.
+  struct sockaddr_in remote_addr;
+  socklen_t addr_size = sizeof(struct sockaddr_in);
+  int res = getpeername(socket, (struct sockaddr *)&remote_addr, &addr_size);
+  char ip[20];
+  strcpy(ip, inet_ntoa(remote_addr.sin_addr));
+  request_data->REMOTE_ADDRESS = ip;
+
+  sprintf(con, "Client connection from: %s", ip);
+  write_log(con);
 
   int read_count = 0;
   if ((read_count = read(socket, request, 4095)) < 0) {
@@ -189,24 +228,10 @@ void *handle_connection(void *csocket_fd) {
     return NULL;
   }
 
-  // Create request struct.
-  struct request_t *request_data = calloc(1, sizeof(struct request_t));
   get_request_information(request_data, request);
-
-  // DEBUG INFORMATION
-  printf("\n\n**REQUEST DATA**\n\n");
-  printf("http version: %s\n", request_data->VERSION);
-  printf("uri: %s\n", request_data->URI);
-  printf("method: %s\n", request_data->METHOD);
-  printf("host: %s\n", request_data->HOST);
-  printf("accept: %s\n", request_data->ACCEPT);
-  printf("accept-language: %s\n", request_data->ACCEPT_LANGUAGE);
-  printf("accept-encoding: %s\n", request_data->ACCEPT_ENCODING);
-  printf("connection: %s\n", request_data->CONNECTION);
-  printf("content-type: %s\n", request_data->CONTENT_TYPE);
-  printf("content-length: %d\n", request_data->CONTENT_LENGTH);
-  printf("body: %s\n", request_data->BODY);
-
+  sprintf(con, "Client (%s) Request:\n\tMethod: %s\n\tURI: %s\n\tHttp Version: %s", ip,
+  request_data->METHOD, request_data->URI, request_data->HTTP_VERSION);
+  write_log(con);
 
   // Directly handle request here.
   char *request_uri = request_data->URI;
@@ -224,8 +249,6 @@ void *handle_connection(void *csocket_fd) {
   memcpy(uri, root_dir, strlen(root_dir));
   uri[strlen(root_dir)] = '/';
   memcpy(uri + strlen(root_dir) + 1, choice, strlen(choice));
-
-  printf("URI: %s\n", uri);
 
   if (!strcmp(request_data->METHOD, "GET")) {
     FILE *page = fopen(uri, "r");
@@ -279,8 +302,6 @@ void *handle_connection(void *csocket_fd) {
     char message[256];
     snprintf(message, 255, "Problem stopping client socket: %d.\n", socket);
     error(message);
-  } else {
-    printf("Shutting down socket %d.\n\n", socket);
   }
 
   free(csocket_fd);
@@ -293,10 +314,10 @@ void *handle_connection(void *csocket_fd) {
 void get_request_information(struct request_t *request, char *message) {
   request->METHOD = strtok(message, " ");
   request->URI = strtok(NULL, " ");
-  request->VERSION = strtok(NULL, "\r\n");
+  request->HTTP_VERSION = strtok(NULL, "\r\n");
 
   // READ the rest of the request.
-  message = request->VERSION + strlen(request->VERSION) + 2;
+  message = request->HTTP_VERSION + strlen(request->HTTP_VERSION) + 2;
 
   char *header;
   char *value;
@@ -305,8 +326,6 @@ void get_request_information(struct request_t *request, char *message) {
   while (strpbrk(message, ": ")) {
     header = strtok(message, ": ");
     value = strtok(NULL, "\r\n");
-
-    // printf("\n%s | %s\n", header, value);
 
     for (i = 0; i < strlen(header); i++)
       header[i] = tolower(header[i]);
@@ -342,6 +361,15 @@ void get_request_information(struct request_t *request, char *message) {
       request->BODY++;
     }
   }
+}
+
+/*
+ * Write message to log file.
+ */
+void write_log(const char *message) {
+  time_t t = time(NULL);
+  fprintf(logfile, "%s : %s", message, ctime(&t));
+  fflush(logfile);
 }
 
 /*
