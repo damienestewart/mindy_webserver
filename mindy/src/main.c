@@ -16,6 +16,7 @@
 #include <pthread.h>
 #include <arpa/inet.h>
 #include <time.h>
+#include <signal.h>
 
 #define MAX_BUFF_SIZE 20*1024
 
@@ -80,14 +81,32 @@ void write_log(const char *);
 /*
  * Declare logfile.
  */
- FILE *logfile = NULL;
+FILE *logfile = NULL;
+
+/*
+ * Server socket.
+ */
+int ssocket_fd;
+
+/*
+ * Server run flag.
+ */
+int server_run = 1;
+
+/*
+ * Handle interrupt signal.
+ */
+void sigint_handler(int sig);
 
 /*
  * Driver code.
  */
 int main(int argc, char *argv[]) {
+  // Set sigint_handler to handle SIGINT
+  signal(SIGINT, sigint_handler);
+
   // Variables.
-  int ssocket_fd, csocket_fd;
+  int csocket_fd;
   struct sockaddr_in server, client;
 
   // Read configuration file for configuration information;
@@ -129,7 +148,7 @@ int main(int argc, char *argv[]) {
   // Accept connections, implement threading.
   socklen_t c = sizeof(struct sockaddr_in);
   pthread_t thread_id;
-  while((csocket_fd = accept(ssocket_fd, (struct sockaddr *)&client, (socklen_t*)&c))) {
+  while(server_run && (csocket_fd = accept(ssocket_fd, (struct sockaddr *)&client, (socklen_t*)&c))) {
     int *lcsocket_fd = malloc(sizeof(int));
     *lcsocket_fd = csocket_fd;
     if (pthread_create(&thread_id, NULL, handle_connection, lcsocket_fd)) {
@@ -138,12 +157,25 @@ int main(int argc, char *argv[]) {
     pthread_detach(thread_id);
   }
 
-  if (csocket_fd < 0) {
-    error("Accept failed.");
+  if (server_run) {
+    if (csocket_fd < 0) {
+      error("Accept failed.");
+    }
+
+    if (close(ssocket_fd) == -1) {
+      char message[256];
+      snprintf(message, 255, "Problem stopping client socket: %d.\n", ssocket_fd);
+      error(message);
+    }
+
+    sprintf(info, "Server stopped @ IP-Address: %s on port %d.", configuration.ip_address,
+    configuration.port);
+    write_log(info);
+
+    fclose(logfile);
+    logfile = NULL;
   }
 
-  fclose(logfile);
-  logfile = NULL;
   return 0;
 }
 
@@ -306,6 +338,25 @@ void *handle_connection(void *csocket_fd) {
 
   free(csocket_fd);
   return NULL;
+}
+
+/*
+ * Handle interrupt signal.
+ */
+void sigint_handler(int sig) {
+
+  server_run = 0;
+
+  char message[256];
+  if (close(ssocket_fd) == -1) {
+    snprintf(message, 255, "Problem stopping server socket: %d.\n", ssocket_fd);
+    error(message);
+  }
+
+  write_log("Server aborted due to SIGINT");
+
+  fclose(logfile);
+  logfile = NULL;
 }
 
 /*
