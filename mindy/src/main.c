@@ -18,6 +18,9 @@
 #include <time.h>
 #include <signal.h>
 
+#include <unistd.h>
+#include <errno.h>
+
 #define MAX_BUFF_SIZE 20*1024
 
 /*
@@ -83,6 +86,10 @@ void write_log(const char *);
  */
 FILE *logfile = NULL;
 
+char cwd[1024];
+
+char nwd[1024];
+
 /*
  * Server socket.
  */
@@ -102,6 +109,8 @@ void sigint_handler(int sig);
  * Driver code.
  */
 int main(int argc, char *argv[]) {
+  getcwd(cwd, 1024);
+  
   // Set sigint_handler to handle SIGINT
   signal(SIGINT, sigint_handler);
 
@@ -112,8 +121,10 @@ int main(int argc, char *argv[]) {
   // Read configuration file for configuration information;
   read_server_configuration(&configuration);
 
+  strcpy(nwd, cwd);
+  strcat(nwd, configuration.logfile);
   // Open log file.
-  if (!(logfile = fopen(configuration.logfile, "a"))) {
+  if (!(logfile = fopen(nwd, "a"))) {
     error("Failed to open log file.");
   }
 
@@ -186,11 +197,13 @@ int main(int argc, char *argv[]) {
  */
 void read_server_configuration(struct config_t *configuration) {
   // Open the configuration file.
-  FILE *config_file = fopen("../config/mindy.conf", "r");
+  strcpy(nwd, cwd);
+  strcat(nwd, "/config/mindy.conf");
+  FILE *config_file = fopen(nwd, "r");
 
   // Is the configuration file present?
   if (!config_file) {
-    error("Configuration file not present.");
+    fprintf(stderr, "Configuration file not present. ERROR:%s", strerror(errno));
   }
 
   // DEFAULT VALUE FOR DEBUG;

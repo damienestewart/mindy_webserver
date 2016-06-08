@@ -61,3 +61,33 @@ Client (127.0.0.1) Request:
 	URI: /
 	Http Version: HTTP/1.1 : Sun Mar 20 16:34:14 2016
 Server aborted due to SIGINT : Sun Mar 20 16:34:17 2016
+Server started @ IP-Address: 127.0.0.1 on port 3000. : Wed Jun  8 11:15:08 2016
+Server aborted due to SIGINT : Wed Jun  8 11:15:42 2016
+Server started @ IP-Address: 127.0.0.1 on port 3000. : Wed Jun  8 11:16:59 2016
+Client connection from: 127.0.0.1 : Wed Jun  8 11:17:48 2016
+Client connection from: 127.0.0.1 : Wed Jun  8 11:17:48 2016
+Client (127.0.0.1) Request:
+	Method: GET
+	URI: /
+	Http Version: HTTP/1.1 : Wed Jun  8 11:17:48 2016
+Client (127.0.0.1) Request:
+	Method: GET
+	URI: /favicon.ico
+	Http Version: HTTP/1.1 : Wed Jun  8 11:17:48 2016
+Client connection from: 127.0.0.1 : Wed Jun  8 11:17:56 2016
+Client connection from: 127.0.0.1 : Wed Jun  8 11:17:56 2016
+Client connection from: 127.0.0.1 : Wed Jun  8 11:17:56 2016
+Client connection from: 127.0.0.1 : Wed Jun  8 11:17:56 2016
+Client (127.0.0.1) Request:
+	Method: GET
+	URI: /helloworld.html
+	Http Version: HTTP/1.1 : Wed Jun  8 11:17:56 2016
+Server started @ IP-Address: 127.0.0.1 on port 3000. : Wed Jun  8 11:22:59 2016
+Server aborted due to SIGINT : Wed Jun  8 11:23:37 2016
+Server started @ IP-Address: 127.0.0.1 on port 3000. : Wed Jun  8 11:24:03 2016
+Server aborted due to SIGINT : Wed Jun  8 11:24:21 2016
+Server started @ IP-Address: 127.0.0.1 on port 3000. : Wed Jun  8 11:25:40 2016
+Server aborted due to SIGINT : Wed Jun  8 11:26:26 2016
+Server started @ IP-Address: 127.0.0.1 on port 3000. : Wed Jun  8 11:26:28 2016
+Server aborted due to SIGINT : Wed Jun  8 11:26:46 2016
+Server started @ IP-Address: 127.0.0.1 on port 3000. : Wed Jun  8 11:47:00 2016
