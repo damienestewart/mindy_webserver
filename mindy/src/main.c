@@ -17,11 +17,12 @@
 #include <arpa/inet.h>
 #include <time.h>
 #include <signal.h>
-
 #include <unistd.h>
 #include <errno.h>
 
 #define MAX_BUFF_SIZE 20*1024
+
+#define CONFIG_RELATIVE "config/mindy.conf"
 
 /*
  * Struct to hold server configuration information.
@@ -82,12 +83,23 @@ void error(const char *);
 void write_log(const char *);
 
 /*
+ * Build a filepath up to "mindy_webserver/mindy" for relative folder access.
+ */
+void resolve_working_directory(char *);
+
+/*
  * Declare logfile.
  */
 FILE *logfile = NULL;
 
+/*
+ * Current Working Directory.
+ */
 char cwd[1024];
 
+/*
+ * New Working Directory (filepath to retrieve relative files).
+ */
 char nwd[1024];
 
 /*
@@ -109,8 +121,9 @@ void sigint_handler(int sig);
  * Driver code.
  */
 int main(int argc, char *argv[]) {
-  getcwd(cwd, 1024);
-  
+  // Build the directory path.
+  resolve_working_directory(argv[0]);
+
   // Set sigint_handler to handle SIGINT
   signal(SIGINT, sigint_handler);
 
@@ -121,8 +134,10 @@ int main(int argc, char *argv[]) {
   // Read configuration file for configuration information;
   read_server_configuration(&configuration);
 
+  // Build correct directory path for the log file.
   strcpy(nwd, cwd);
   strcat(nwd, configuration.logfile);
+
   // Open log file.
   if (!(logfile = fopen(nwd, "a"))) {
     error("Failed to open log file.");
@@ -190,20 +205,41 @@ int main(int argc, char *argv[]) {
   return 0;
 }
 
+void resolve_working_directory(char *program_name) {
+  // Retrieve current working directory.
+  getcwd(cwd, 1024);
+
+  // If the current working dir is the bin/, remove the "bin/" portion from cwd.
+  if (strcmp(program_name, "./mindy" ) == 0) {
+    cwd[strlen(cwd) - 3] = '\0';
+  } else {
+    // Extract any filepath that is inbetween the current dir and "bin/".
+    for (int i = 1; i < strlen(program_name); i++) {
+      // Copy everything after the '.' and up to the "bin/mindy".
+      if (strcmp(program_name + i, "bin/mindy") == 0) {
+        *(program_name + i) = '\0';
+        strcat(cwd, program_name + 1);
+        break;
+      }
+    }
+  }
+}
+
 /*
  * Read the configuration file.
  * struct config_t configuration is the configuration struct
  * that holds values from the configuration file.
  */
 void read_server_configuration(struct config_t *configuration) {
-  // Open the configuration file.
+  // Build the correct directory path.
   strcpy(nwd, cwd);
-  strcat(nwd, "/config/mindy.conf");
-  FILE *config_file = fopen(nwd, "r");
+  strcat(nwd, CONFIG_RELATIVE);
 
-  // Is the configuration file present?
-  if (!config_file) {
-    fprintf(stderr, "Configuration file not present. ERROR:%s", strerror(errno));
+  // Open the configuration file.
+  FILE *config_file;
+
+  if (!(config_file = fopen(nwd, "r"))) {
+    fprintf(stderr, "Configuration file:%s not present. ERROR:%s\n", nwd, strerror(errno));
   }
 
   // DEFAULT VALUE FOR DEBUG;
